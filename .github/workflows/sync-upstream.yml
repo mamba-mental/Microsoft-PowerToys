@@ -1,0 +1,40 @@
+name: Auto Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 8 * * *'   # runs 08:00 UTC daily
+  workflow_dispatch:       # lets you run it manually
+
+permissions:
+  contents: write          # allow push back to your fork
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: sync-upstream
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/microsoft/PowerToys.git || true
+          git fetch upstream
+
+      - name: Rebase main onto upstream/main
+        run: |
+          git checkout main
+          git rebase upstream/main
+
+      - name: Push updated main to your fork
+        run: git push origin main --force-with-lease
